@@ -8,20 +8,19 @@ workflows:
       java: 17
 
     scripts:
-      - name: Extract project
+      - name: Extract Android project
         script: |
+          set -e
           mkdir -p source
-          unzip -o BiochemistryEasyArabic_Source.zip -d source
-
-      - name: Fix Java finish method
-        script: |
-          JAVA_FILE=$(find source -name MainActivity.java -print -quit)
-          test -n "$JAVA_FILE"
-          perl -0pi -e 's/\bfinish\(\)/finishQuiz()/g' "$JAVA_FILE"
+          unzip -o BiochemistryEasyWithMe_Android_ApprovedDesign_v3.zip -d source
 
       - name: Build Android APK
         script: |
-          PROJECT_DIR=$(find source \( -name settings.gradle.kts -o -name settings.gradle \) -print -quit | xargs dirname)
+          set -e
+          GRADLE_FILE=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          test -n "$GRADLE_FILE"
+          PROJECT_DIR=$(dirname "$GRADLE_FILE")
+          echo "Building project in: $PROJECT_DIR"
           cd "$PROJECT_DIR"
           gradle --no-daemon assembleDebug
 
