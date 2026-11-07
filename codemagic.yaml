@@ -1,6 +1,6 @@
 workflows:
   android-apk:
-    name: Bio Alksher - Build 2.2
+    name: Bio Alksher - Android APK
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -8,11 +8,12 @@ workflows:
       java: 17
 
     scripts:
-      - name: Extract Bio Alksher project
+      - name: Extract Android project
         script: |
           set -e
           mkdir -p source
-          unzip -o Bio_Alksher_BuildFix_2_2_Source.zip -d source
+          test -f Bio_Alksher_BuildFix_2_3_Source.zip
+          unzip -o Bio_Alksher_BuildFix_2_3_Source.zip -d source
 
       - name: Build Android APK
         script: |
@@ -20,11 +21,9 @@ workflows:
           GRADLE_FILE=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
           test -n "$GRADLE_FILE"
           PROJECT_DIR=$(dirname "$GRADLE_FILE")
+          echo "Building project in: $PROJECT_DIR"
           cd "$PROJECT_DIR"
           gradle --no-daemon assembleDebug
 
     artifacts:
       - source/**/app/build/outputs/apk/debug/*.apk
-
-
-
