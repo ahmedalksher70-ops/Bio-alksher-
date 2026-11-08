@@ -1,6 +1,7 @@
+
 workflows:
   android-apk:
-    name: Bio Alksher 2.5 - Reference Design
+    name: Bio Alksher - Full Source Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -8,22 +9,43 @@ workflows:
       java: 17
 
     scripts:
-      - name: Extract Android project
+      - name: Rebuild source ZIP from uploaded parts
         script: |
           set -e
+          cat Bio_alksher_source.part001 \
+              Bio_alksher_source.part002 \
+              Bio_alksher_source.part003 \
+              > Bio_Alksher_Full_Source.zip
+
+          unzip -t Bio_Alksher_Full_Source.zip
           mkdir -p source
-          test -f Bio_Alksher_2_5_Reference_Design_Source.zip
-          unzip -o Bio_Alksher_2_5_Reference_Design_Source.zip -d source
+          unzip -o Bio_Alksher_Full_Source.zip -d source
+
+      - name: Locate Android project
+        script: |
+          set -e
+          GRADLE_FILE=$(find source -type f \( \
+            -name settings.gradle -o \
+            -name settings.gradle.kts \
+          \) -print -quit)
+
+          test -n "$GRADLE_FILE"
+          PROJECT_DIR=$(dirname "$GRADLE_FILE")
+          echo "$PROJECT_DIR" > /tmp/android_project_dir
+          echo "Android project: $PROJECT_DIR"
 
       - name: Build Android APK
         script: |
           set -e
-          GRADLE_FILE=$(find source -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
-          test -n "$GRADLE_FILE"
-          PROJECT_DIR=$(dirname "$GRADLE_FILE")
-          echo "Building project in: $PROJECT_DIR"
+          PROJECT_DIR=$(cat /tmp/android_project_dir)
           cd "$PROJECT_DIR"
-          gradle --no-daemon assembleDebug
+
+          if [ -f ./gradlew ]; then
+            chmod +x ./gradlew
+            ./gradlew --no-daemon assembleDebug
+          else
+            gradle --no-daemon assembleDebug
+          fi
 
     artifacts:
       - source/**/app/build/outputs/apk/debug/*.apk
