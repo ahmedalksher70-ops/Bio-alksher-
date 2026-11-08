@@ -12,31 +12,37 @@ workflows:
       - name: Rebuild source ZIP from uploaded parts
         script: |
           set -e
-          cat Bio_alksher_source.part001 \
-              Bio_alksher_source.part002 \
-              Bio_alksher_source.part003 \
+
+          cat Bio_alksher_project.part000 \
+              Bio_alksher_project.part001 \
+              Bio_alksher_project.part002 \
               > Bio_Alksher_Full_Source.zip
 
           unzip -t Bio_Alksher_Full_Source.zip
+
           mkdir -p source
           unzip -o Bio_Alksher_Full_Source.zip -d source
 
       - name: Locate Android project
         script: |
           set -e
+
           GRADLE_FILE=$(find source -type f \( \
             -name settings.gradle -o \
             -name settings.gradle.kts \
           \) -print -quit)
 
           test -n "$GRADLE_FILE"
+
           PROJECT_DIR=$(dirname "$GRADLE_FILE")
           echo "$PROJECT_DIR" > /tmp/android_project_dir
+
           echo "Android project: $PROJECT_DIR"
 
       - name: Build Android APK
         script: |
           set -e
+
           PROJECT_DIR=$(cat /tmp/android_project_dir)
           cd "$PROJECT_DIR"
 
