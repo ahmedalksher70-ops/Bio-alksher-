@@ -1,7 +1,7 @@
 
 workflows:
   android-apk:
-    name: Bio Alksher - Full Source Build
+    name: Bio Alksher - Login Fix Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -9,13 +9,13 @@ workflows:
       java: 17
 
     scripts:
-      - name: Rebuild source ZIP from uploaded parts
+      - name: Rebuild source ZIP from three parts
         script: |
           set -e
 
-          cat Bio_alksher_project.part000 \
-              Bio_alksher_project.part001 \
-              Bio_alksher_project.part002 \
+          cat Bio_alksher_Login_Fix_Spark.part000 \
+              Bio_alksher_Login_Fix_Spark.part001 \
+              Bio_alksher_Login_Fix_Spark.part002 \
               > Bio_Alksher_Full_Source.zip
 
           unzip -t Bio_Alksher_Full_Source.zip
