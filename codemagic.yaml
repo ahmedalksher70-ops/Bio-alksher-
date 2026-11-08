@@ -13,15 +13,15 @@ workflows:
         script: |
           set -e
 
-          cat Bio_alksher_Login_Fix_Spark.part000 \
-              Bio_alksher_Login_Fix_Spark.part001 \
-              Bio_alksher_Login_Fix_Spark.part002 \
-              > Bio_Alksher_Full_Source.zip
+          cat BioAlksher_Fix_000.part \
+              BioAlksher_Fix_001.part \
+              BioAlksher_Fix_002.part \
+              > BioAlksher_Fix_Combined.zip
 
-          unzip -t Bio_Alksher_Full_Source.zip
+          unzip -t BioAlksher_Fix_Combined.zip
 
           mkdir -p source
-          unzip -o Bio_Alksher_Full_Source.zip -d source
+          unzip -o BioAlksher_Fix_Combined.zip -d source
 
       - name: Locate Android project
         script: |
