@@ -53,5 +53,18 @@ workflows:
             gradle --no-daemon assembleDebug
           fi
 
+      - name: Extract SHA-1 and SHA-256
+        script: |
+          set -e
+
+          PROJECT_DIR=$(cat /tmp/android_project_dir)
+          cd "$PROJECT_DIR"
+
+          if [ -f ./gradlew ]; then
+            ./gradlew --no-daemon :app:signingReport
+          else
+            gradle --no-daemon :app:signingReport
+          fi
+
     artifacts:
       - source/**/app/build/outputs/apk/debug/*.apk
