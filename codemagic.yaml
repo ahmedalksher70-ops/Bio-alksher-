@@ -1,6 +1,6 @@
 workflows:
   android-apk:
-    name: Bio Alksher - Complete Update Build
+    name: Bio Alksher - Repaired Project Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -8,13 +8,13 @@ workflows:
       java: 17
 
     scripts:
-      - name: Extract three corrected project ZIP files
+      - name: Extract three repaired project ZIP files
         script: |
           set -e
 
-          PART1="Bio_Alksher_Complete_Update_minSdk24_Part1.zip"
-          PART2="Bio_Alksher_Complete_Update_minSdk24_Part2.zip"
-          PART3="Bio_Alksher_Complete_Update_minSdk24_Part3.zip"
+          PART1="Bio_Alksher_Repair_Final_Part1.zip"
+          PART2="Bio_Alksher_Repair_Final_Part2.zip"
+          PART3="Bio_Alksher_Repair_Final_Part3.zip"
 
           test -f "$PART1"
           test -f "$PART2"
@@ -66,7 +66,7 @@ workflows:
           echo "Checking: $GRADLE_FILE"
           grep -n 'minSdk' "$GRADLE_FILE"
 
-          if ! grep -Eq 'minSdk(Version)?[[:space:]]*[= ]+[[:space:]]*24|minSdk[[:space:]]*=[[:space:]]*24' "$GRADLE_FILE"; then
+          if ! grep -Eq 'minSdk(Version)?[[:space:]]*=?[[:space:]]*24([[:space:]]|$)' "$GRADLE_FILE"; then
             echo "ERROR: minSdk 24 was not found"
             exit 1
           fi
