@@ -1,4 +1,3 @@
-
 workflows:
   android-apk:
     name: Bio Alksher - Complete Update Build
@@ -9,13 +8,13 @@ workflows:
       java: 17
 
     scripts:
-      - name: Extract three project ZIP files
+      - name: Extract three corrected project ZIP files
         script: |
           set -e
 
-          PART1="Bio_Alksher_Complete_Update_Part1.zip"
-          PART2="Bio_Alksher_Complete_Update_Part2.zip"
-          PART3="Bio_Alksher_Complete_Update_Part3.zip"
+          PART1="Bio_Alksher_Complete_Update_minSdk24_Part1.zip"
+          PART2="Bio_Alksher_Complete_Update_minSdk24_Part2.zip"
+          PART3="Bio_Alksher_Complete_Update_minSdk24_Part3.zip"
 
           test -f "$PART1"
           test -f "$PART2"
@@ -32,7 +31,7 @@ workflows:
           echo "Extracting Part 3..."
           unzip -o "$PART3" -d source
 
-          echo "All project archives extracted."
+          echo "All archives extracted successfully."
 
       - name: Verify Java fix
         script: |
@@ -49,6 +48,30 @@ workflows:
           fi
 
           echo "Java source check passed"
+
+      - name: Verify Android minSdk
+        script: |
+          set -e
+
+          GRADLE_FILE=$(find source -type f \
+            -path '*/app/build.gradle' -print -quit)
+
+          if [ -z "$GRADLE_FILE" ]; then
+            GRADLE_FILE=$(find source -type f \
+              -path '*/app/build.gradle.kts' -print -quit)
+          fi
+
+          test -n "$GRADLE_FILE"
+
+          echo "Checking: $GRADLE_FILE"
+          grep -n 'minSdk' "$GRADLE_FILE"
+
+          if ! grep -Eq 'minSdk(Version)?[[:space:]]*[= ]+[[:space:]]*24|minSdk[[:space:]]*=[[:space:]]*24' "$GRADLE_FILE"; then
+            echo "ERROR: minSdk 24 was not found"
+            exit 1
+          fi
+
+          echo "minSdk verification passed"
 
       - name: Locate Android project
         script: |
@@ -96,3 +119,6 @@ workflows:
 
     artifacts:
       - source/**/build/outputs/apk/debug/*.apk
+
+
+
