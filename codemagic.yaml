@@ -8,6 +8,7 @@ workflows:
       java: 17
 
     scripts:
+
       - name: Extract three repaired project ZIP files
         script: |
           set -e
@@ -64,14 +65,13 @@ workflows:
           test -n "$GRADLE_FILE"
 
           echo "Checking: $GRADLE_FILE"
-          grep -n 'minSdk' "$GRADLE_FILE"
 
-          if ! grep -Eq 'minSdk(Version)?[[:space:]]*=?[[:space:]]*24([[:space:]]|$)' "$GRADLE_FILE"; then
+          if ! grep -Eq 'minSdk[[:space:]]+24([;[:space:]]|$)|minSdk[[:space:]]*=[[:space:]]*24([;[:space:]]|$)' "$GRADLE_FILE"; then
             echo "ERROR: minSdk 24 was not found"
             exit 1
           fi
 
-          echo "minSdk verification passed"
+          echo "minSdk 24 verified successfully"
 
       - name: Locate Android project
         script: |
@@ -119,6 +119,5 @@ workflows:
 
     artifacts:
       - source/**/build/outputs/apk/debug/*.apk
-
 
 
