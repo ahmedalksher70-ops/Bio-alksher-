@@ -1,7 +1,7 @@
 
 workflows:
   android-apk:
-    name: Bio Alksher - Icon Integrated Build
+    name: Bio Alksher - Complete Update Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -9,52 +9,68 @@ workflows:
       java: 17
 
     scripts:
-      - name: Rebuild source ZIP from three parts
+      - name: Extract three project ZIP files
         script: |
           set -e
 
-          PART0="Bio_Alksher_Icon_Integrated.part000"
-          PART1="Bio_Alksher_Icon_Integrated.part001"
-          PART2="Bio_Alksher_Icon_Integrated.part002"
+          PART1="Bio_Alksher_Complete_Update_Part1.zip"
+          PART2="Bio_Alksher_Complete_Update_Part2.zip"
+          PART3="Bio_Alksher_Complete_Update_Part3.zip"
 
-          test -f "$PART0"
           test -f "$PART1"
           test -f "$PART2"
-
-          cat "$PART0" "$PART1" "$PART2" > Bio_Alksher_Icon_Integrated.zip
-
-          unzip -t Bio_Alksher_Icon_Integrated.zip
+          test -f "$PART3"
 
           mkdir -p source
-          unzip -o Bio_Alksher_Icon_Integrated.zip -d source
+
+          echo "Extracting Part 1..."
+          unzip -o "$PART1" -d source
+
+          echo "Extracting Part 2..."
+          unzip -o "$PART2" -d source
+
+          echo "Extracting Part 3..."
+          unzip -o "$PART3" -d source
+
+          echo "All project archives extracted."
 
       - name: Verify Java fix
         script: |
           set -e
-          JAVA_FILE=$(find source -type f -name LecturePdfActivity.java -print -quit)
+
+          JAVA_FILE=$(find source -type f \
+            -name LecturePdfActivity.java -print -quit)
+
           test -n "$JAVA_FILE"
+
           if grep -n 'half.weight' "$JAVA_FILE"; then
             echo "ERROR: Old Java code still exists"
             exit 1
           fi
+
           echo "Java source check passed"
 
       - name: Locate Android project
         script: |
           set -e
+
           GRADLE_FILE=$(find source -type f \( \
-            -name settings.gradle -o \
-            -name settings.gradle.kts \
+            -name settings.gradle \
+            -o -name settings.gradle.kts \
           \) -print -quit)
 
           test -n "$GRADLE_FILE"
+
           PROJECT_DIR=$(dirname "$GRADLE_FILE")
+
           echo "$PROJECT_DIR" > /tmp/android_project_dir
+
           echo "Android project: $PROJECT_DIR"
 
       - name: Build Android APK
         script: |
           set -e
+
           PROJECT_DIR=$(cat /tmp/android_project_dir)
           cd "$PROJECT_DIR"
 
@@ -68,6 +84,7 @@ workflows:
       - name: Extract SHA-1 and SHA-256
         script: |
           set -e
+
           PROJECT_DIR=$(cat /tmp/android_project_dir)
           cd "$PROJECT_DIR"
 
@@ -78,4 +95,4 @@ workflows:
           fi
 
     artifacts:
-      - source/**/app/build/outputs/apk/debug/*.apk
+      - source/**/build/outputs/apk/debug/*.apk
