@@ -1,3 +1,4 @@
+
 workflows:
   android-apk:
     name: Bio Alksher - Repaired Project Build
@@ -9,13 +10,13 @@ workflows:
 
     scripts:
 
-      - name: Extract three repaired project ZIP files
+      - name: Extract three project ZIP files
         script: |
           set -e
 
-          PART1="Bio_Alksher_Repair_Final_Part1.zip"
-          PART2="Bio_Alksher_Repair_Final_Part2.zip"
-          PART3="Bio_Alksher_Repair_Final_Part3.zip"
+          PART1="Bio_Alksher_Project_Part1_Under25MB.zip"
+          PART2="Bio_Alksher_Project_Part2_Under25MB.zip"
+          PART3="Bio_Alksher_Project_Part3_Under25MB.zip"
 
           test -f "$PART1"
           test -f "$PART2"
@@ -34,67 +35,84 @@ workflows:
 
           echo "All archives extracted successfully."
 
-      - name: Verify Java fix
+      - name: Locate Android project
         script: |
           set -e
 
-          JAVA_FILE=$(find source -type f \
-            -name LecturePdfActivity.java -print -quit)
+          SETTINGS_FILE=$(find source -type f \( \
+            -name settings.gradle \
+            -o -name settings.gradle.kts \
+          \) -print -quit)
 
-          test -n "$JAVA_FILE"
+          test -n "$SETTINGS_FILE"
 
-          if grep -n 'half.weight' "$JAVA_FILE"; then
-            echo "ERROR: Old Java code still exists"
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+
+          echo "$PROJECT_DIR" > /tmp/android_project_dir
+
+          echo "Android project: $PROJECT_DIR"
+
+      - name: Verify Java source files
+        script: |
+          set -e
+
+          PROJECT_DIR=$(cat /tmp/android_project_dir)
+
+          JAVA_DIR="$PROJECT_DIR/app/src/main/java/com/biochem/easy"
+
+          test -f "$JAVA_DIR/MainActivity.java"
+          test -f "$JAVA_DIR/LecturePdfActivity.java"
+
+          if grep -R -n 'half\.weight' "$JAVA_DIR"; then
+            echo "ERROR: Old Java code still exists."
             exit 1
           fi
 
-          echo "Java source check passed"
+          echo "Java source check passed."
+
+      - name: Verify screenshot protection
+        script: |
+          set -e
+
+          PROJECT_DIR=$(cat /tmp/android_project_dir)
+
+          MAIN_FILE="$PROJECT_DIR/app/src/main/java/com/biochem/easy/MainActivity.java"
+          PDF_FILE="$PROJECT_DIR/app/src/main/java/com/biochem/easy/LecturePdfActivity.java"
+
+          grep -q 'FLAG_SECURE' "$MAIN_FILE"
+          grep -q 'FLAG_SECURE' "$PDF_FILE"
+
+          echo "Screenshot protection code found."
 
       - name: Verify Android minSdk
         script: |
           set -e
 
-          GRADLE_FILE=$(find source -type f \
-            -path '*/app/build.gradle' -print -quit)
+          PROJECT_DIR=$(cat /tmp/android_project_dir)
 
-          if [ -z "$GRADLE_FILE" ]; then
-            GRADLE_FILE=$(find source -type f \
-              -path '*/app/build.gradle.kts' -print -quit)
+          GRADLE_FILE="$PROJECT_DIR/app/build.gradle"
+
+          if [ ! -f "$GRADLE_FILE" ]; then
+            GRADLE_FILE="$PROJECT_DIR/app/build.gradle.kts"
           fi
 
-          test -n "$GRADLE_FILE"
+          test -f "$GRADLE_FILE"
 
           echo "Checking: $GRADLE_FILE"
 
           if ! grep -Eq 'minSdk[[:space:]]+24([;[:space:]]|$)|minSdk[[:space:]]*=[[:space:]]*24([;[:space:]]|$)' "$GRADLE_FILE"; then
-            echo "ERROR: minSdk 24 was not found"
+            echo "ERROR: minSdk 24 was not found."
             exit 1
           fi
 
-          echo "minSdk 24 verified successfully"
-
-      - name: Locate Android project
-        script: |
-          set -e
-
-          GRADLE_FILE=$(find source -type f \( \
-            -name settings.gradle \
-            -o -name settings.gradle.kts \
-          \) -print -quit)
-
-          test -n "$GRADLE_FILE"
-
-          PROJECT_DIR=$(dirname "$GRADLE_FILE")
-
-          echo "$PROJECT_DIR" > /tmp/android_project_dir
-
-          echo "Android project: $PROJECT_DIR"
+          echo "minSdk 24 verified successfully."
 
       - name: Build Android APK
         script: |
           set -e
 
           PROJECT_DIR=$(cat /tmp/android_project_dir)
+
           cd "$PROJECT_DIR"
 
           if [ -f ./gradlew ]; then
@@ -104,11 +122,14 @@ workflows:
             gradle --no-daemon assembleDebug
           fi
 
+          echo "APK build completed."
+
       - name: Extract SHA-1 and SHA-256
         script: |
           set -e
 
           PROJECT_DIR=$(cat /tmp/android_project_dir)
+
           cd "$PROJECT_DIR"
 
           if [ -f ./gradlew ]; then
@@ -117,8 +138,7 @@ workflows:
             gradle --no-daemon :app:signingReport
           fi
 
+          echo "Signing report completed."
+
     artifacts:
       - source/**/build/outputs/apk/debug/*.apk
-
-
-
