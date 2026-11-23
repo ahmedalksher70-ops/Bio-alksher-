@@ -1,7 +1,7 @@
 
 workflows:
   android-apk:
-    name: Bio Alksher Android APK - Subscription UI Final
+    name: Bio Alksher Android APK - Exact Reference UI Final
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -9,20 +9,20 @@ workflows:
       java: 17
 
     scripts:
-      - name: Verify latest Subscription UI archives
+      - name: Verify the three latest project archives
         script: |
           set -e
           cd "$CM_BUILD_DIR"
 
-          PART1="Bio_Alksher_Subscription_UI_Final_25MB_Part1.zip"
-          PART2="Bio_Alksher_Subscription_UI_Final_25MB_Part2.zip"
-          PART3="Bio_Alksher_Subscription_UI_Final_25MB_Part3.zip"
+          PART1="Bio_Alksher_Exact_Reference_UI_Final_Part1.zip"
+          PART2="Bio_Alksher_Exact_Reference_UI_Final_Part2.zip"
+          PART3="Bio_Alksher_Exact_Reference_UI_Final_Part3.zip"
 
           LIMIT=$((25 * 1024 * 1024))
 
           for FILE in "$PART1" "$PART2" "$PART3"; do
             if [ ! -f "$FILE" ]; then
-              echo "ERROR: Missing archive: $FILE"
+              echo "ERROR: Missing project archive: $FILE"
               exit 1
             fi
 
@@ -38,9 +38,9 @@ workflows:
             echo "Verified: $FILE ($SIZE bytes)"
           done
 
-          echo "All three latest archives verified."
+          echo "All three project archives verified successfully."
 
-      - name: Remove old project and extract latest project
+      - name: Remove old extraction and merge latest project
         script: |
           set -e
           cd "$CM_BUILD_DIR"
@@ -48,9 +48,9 @@ workflows:
           rm -rf source
           mkdir -p source
 
-          unzip -oq Bio_Alksher_Subscription_UI_Final_25MB_Part1.zip -d source
-          unzip -oq Bio_Alksher_Subscription_UI_Final_25MB_Part2.zip -d source
-          unzip -oq Bio_Alksher_Subscription_UI_Final_25MB_Part3.zip -d source
+          unzip -oq Bio_Alksher_Exact_Reference_UI_Final_Part1.zip -d source
+          unzip -oq Bio_Alksher_Exact_Reference_UI_Final_Part2.zip -d source
+          unzip -oq Bio_Alksher_Exact_Reference_UI_Final_Part3.zip -d source
 
           PROJECT_DIR="source"
 
@@ -66,7 +66,7 @@ workflows:
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$CM_ENV"
-          echo "Latest Subscription UI project extracted successfully."
+          echo "Latest project extracted successfully."
 
       - name: Validate Android project and Firebase
         script: |
@@ -89,7 +89,7 @@ workflows:
           done
 
           if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
-            echo "ERROR: settings.gradle is missing."
+            echo "ERROR: Gradle settings file is missing."
             exit 1
           fi
 
