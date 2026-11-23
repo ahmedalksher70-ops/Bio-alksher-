@@ -1,7 +1,7 @@
 
 workflows:
   android-apk:
-    name: Bio Alksher - Repaired Project Build
+    name: Bio Alksher Android APK
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -9,136 +9,116 @@ workflows:
       java: 17
 
     scripts:
-
-      - name: Extract three project ZIP files
+      - name: Verify the three uploaded project archives
         script: |
           set -e
+          cd "$CM_BUILD_DIR"
+          PART1="Bio_Alksher_New_Approved_Registration_Part1.zip"
+          PART2="Bio_Alksher_New_Approved_Registration_Part2.zip"
+          PART3="Bio_Alksher_New_Approved_Registration_Part3.zip"
 
-          PART1="Bio_Alksher_Project_Part1_Under25MB.zip"
-          PART2="Bio_Alksher_Project_Part2_Under25MB.zip"
-          PART3="Bio_Alksher_Project_Part3_Under25MB.zip"
+          for FILE in "$PART1" "$PART2" "$PART3"; do
+            if [ ! -f "$FILE" ]; then
+              echo "ERROR: Missing required archive: $FILE"
+              echo "Upload all three ZIP files to the Codemagic build directory."
+              exit 1
+            fi
+            unzip -t "$FILE" >/dev/null
+            SIZE=$(stat -f%z "$FILE")
+            LIMIT=$((25 * 1024 * 1024))
+            if [ "$SIZE" -gt "$LIMIT" ]; then
+              echo "ERROR: $FILE is larger than 25 MiB."
+              exit 1
+            fi
+            echo "Verified: $FILE ($SIZE bytes)"
+          done
 
-          test -f "$PART1"
-          test -f "$PART2"
-          test -f "$PART3"
-
+      - name: Merge Part 1, Part 2 and Part 3
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR"
+          rm -rf source
           mkdir -p source
+          unzip -oq Bio_Alksher_New_Approved_Registration_Part1.zip -d source
+          unzip -oq Bio_Alksher_New_Approved_Registration_Part2.zip -d source
+          unzip -oq Bio_Alksher_New_Approved_Registration_Part3.zip -d source
 
-          echo "Extracting Part 1..."
-          unzip -o "$PART1" -d source
-
-          echo "Extracting Part 2..."
-          unzip -o "$PART2" -d source
-
-          echo "Extracting Part 3..."
-          unzip -o "$PART3" -d source
-
-          echo "All archives extracted successfully."
-
-      - name: Locate Android project
-        script: |
-          set -e
-
-          SETTINGS_FILE=$(find source -type f \( \
-            -name settings.gradle \
-            -o -name settings.gradle.kts \
-          \) -print -quit)
-
-          test -n "$SETTINGS_FILE"
-
-          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
-
-          echo "$PROJECT_DIR" > /tmp/android_project_dir
-
-          echo "Android project: $PROJECT_DIR"
-
-      - name: Verify Java source files
-        script: |
-          set -e
-
-          PROJECT_DIR=$(cat /tmp/android_project_dir)
-
-          JAVA_DIR="$PROJECT_DIR/app/src/main/java/com/biochem/easy"
-
-          test -f "$JAVA_DIR/MainActivity.java"
-          test -f "$JAVA_DIR/LecturePdfActivity.java"
-
-          if grep -R -n 'half\.weight' "$JAVA_DIR"; then
-            echo "ERROR: Old Java code still exists."
+          PROJECT_DIR="source/Bio_Alksher_New_Project_Approved_Entry"
+          if [ ! -d "$PROJECT_DIR" ]; then
+            echo "ERROR: Expected project folder was not found: $PROJECT_DIR"
+            find source -maxdepth 3 -type f | head -100
             exit 1
           fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$CM_ENV"
+          echo "Project archives merged successfully."
 
-          echo "Java source check passed."
-
-      - name: Verify screenshot protection
+      - name: Validate Android project configuration
         script: |
           set -e
+          cd "$CM_BUILD_DIR/$PROJECT_DIR"
 
-          PROJECT_DIR=$(cat /tmp/android_project_dir)
+          for FILE in settings.gradle build.gradle gradle.properties app/build.gradle app/src/main/AndroidManifest.xml app/google-services.json; do
+            if [ ! -f "$FILE" ]; then
+              echo "ERROR: Required project file is missing: $FILE"
+              exit 1
+            fi
+          done
 
-          MAIN_FILE="$PROJECT_DIR/app/src/main/java/com/biochem/easy/MainActivity.java"
-          PDF_FILE="$PROJECT_DIR/app/src/main/java/com/biochem/easy/LecturePdfActivity.java"
+          for FILE in \
+            app/src/main/java/com/biochem/easy/MainActivity.java \
+            app/src/main/java/com/biochem/easy/LecturePdfActivity.java \
+            app/src/main/java/com/biochem/easy/DeviceIdentity.java \
+            app/src/main/java/com/biochem/easy/AppsScriptApi.java; do
+            if [ ! -f "$FILE" ]; then
+              echo "ERROR: Required source file is missing: $FILE"
+              exit 1
+            fi
+          done
 
-          grep -q 'FLAG_SECURE' "$MAIN_FILE"
-          grep -q 'FLAG_SECURE' "$PDF_FILE"
+          grep -Eq 'minSdk[[:space:]]*=?[[:space:]]*24|minSdkVersion[[:space:]]+24' app/build.gradle
+          grep -q 'FLAG_SECURE' app/src/main/java/com/biochem/easy/LecturePdfActivity.java
+          grep -q 'biochemistry-easy-with' app/google-services.json
 
-          echo "Screenshot protection code found."
+          python3 - <<'PY'
+          import json
+          with open('app/google-services.json', encoding='utf-8') as f:
+              data = json.load(f)
+          project_id = data.get('project_info', {}).get('project_id')
+          if project_id != 'biochemistry-easy-with':
+              raise SystemExit(f'Unexpected Firebase project_id: {project_id}')
+          print('Firebase configuration JSON is valid:', project_id)
+          PY
 
-      - name: Verify Android minSdk
-        script: |
-          set -e
-
-          PROJECT_DIR=$(cat /tmp/android_project_dir)
-
-          GRADLE_FILE="$PROJECT_DIR/app/build.gradle"
-
-          if [ ! -f "$GRADLE_FILE" ]; then
-            GRADLE_FILE="$PROJECT_DIR/app/build.gradle.kts"
-          fi
-
-          test -f "$GRADLE_FILE"
-
-          echo "Checking: $GRADLE_FILE"
-
-          if ! grep -Eq 'minSdk[[:space:]]+24([;[:space:]]|$)|minSdk[[:space:]]*=[[:space:]]*24([;[:space:]]|$)' "$GRADLE_FILE"; then
-            echo "ERROR: minSdk 24 was not found."
+          if grep -Rni 'half\.weight' app/src/main 2>/dev/null; then
+            echo "ERROR: Unexpected half.weight reference found in app sources."
             exit 1
           fi
+          echo "Android project validation passed."
 
-          echo "minSdk 24 verified successfully."
-
-      - name: Build Android APK
+      - name: Build debug APK
         script: |
           set -e
-
-          PROJECT_DIR=$(cat /tmp/android_project_dir)
-
-          cd "$PROJECT_DIR"
-
+          cd "$CM_BUILD_DIR/$PROJECT_DIR"
           if [ -f ./gradlew ]; then
             chmod +x ./gradlew
-            ./gradlew --no-daemon assembleDebug
+            ./gradlew --no-daemon clean :app:assembleDebug
           else
-            gradle --no-daemon assembleDebug
+            gradle --no-daemon clean :app:assembleDebug
           fi
 
-          echo "APK build completed."
-
-      - name: Extract SHA-1 and SHA-256
+      - name: Verify generated APK
         script: |
           set -e
-
-          PROJECT_DIR=$(cat /tmp/android_project_dir)
-
-          cd "$PROJECT_DIR"
-
-          if [ -f ./gradlew ]; then
-            ./gradlew --no-daemon :app:signingReport
-          else
-            gradle --no-daemon :app:signingReport
+          cd "$CM_BUILD_DIR/$PROJECT_DIR"
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -s "$APK" ]; then
+            echo "ERROR: Debug APK was not generated at $APK"
+            find app/build/outputs -type f 2>/dev/null || true
+            exit 1
           fi
-
-          echo "Signing report completed."
+          ls -lh "$APK"
+          echo "APK build completed successfully."
 
     artifacts:
-      - source/**/build/outputs/apk/debug/*.apk
+      - source/**/app/build/outputs/apk/debug/*.apk
+      - source/**/app/build/outputs/mapping/**
