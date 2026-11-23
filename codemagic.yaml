@@ -13,9 +13,9 @@ workflows:
         script: |
           set -e
           cd "$CM_BUILD_DIR"
-          PART1="Bio_Alksher_New_Approved_Registration_Part1.zip"
-          PART2="Bio_Alksher_New_Approved_Registration_Part2.zip"
-          PART3="Bio_Alksher_New_Approved_Registration_Part3.zip"
+          PART1="Bio_Alksher_Updated_Part1.zip"
+          PART2="Bio_Alksher_Updated_Part2.zip"
+          PART3="Bio_Alksher_Updated_Part3.zip"
 
           for FILE in "$PART1" "$PART2" "$PART3"; do
             if [ ! -f "$FILE" ]; then
@@ -39,9 +39,9 @@ workflows:
           cd "$CM_BUILD_DIR"
           rm -rf source
           mkdir -p source
-          unzip -oq Bio_Alksher_New_Approved_Registration_Part1.zip -d source
-          unzip -oq Bio_Alksher_New_Approved_Registration_Part2.zip -d source
-          unzip -oq Bio_Alksher_New_Approved_Registration_Part3.zip -d source
+          unzip -oq Bio_Alksher_Updated_Part1.zip -d source
+          unzip -oq Bio_Alksher_Updated_Part2.zip -d source
+          unzip -oq Bio_Alksher_Updated_Part3.zip -d source
 
           PROJECT_DIR="source/Bio_Alksher_New_Project_Approved_Entry"
           if [ ! -d "$PROJECT_DIR" ]; then
