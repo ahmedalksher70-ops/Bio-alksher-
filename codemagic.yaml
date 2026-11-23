@@ -1,7 +1,7 @@
 
 workflows:
   android-apk:
-    name: Bio Alksher Android APK
+    name: Bio Alksher Android APK - Student Gate Fixed
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -9,25 +9,24 @@ workflows:
       java: 17
 
     scripts:
-      - name: Verify the three new project archives
+      - name: Verify latest StudentGate project archives
         script: |
           set -e
           cd "$CM_BUILD_DIR"
 
-          PART1="Bio_Alksher_QuestionBank_Final_25MB_Part1.zip"
-          PART2="Bio_Alksher_QuestionBank_Final_25MB_Part2.zip"
-          PART3="Bio_Alksher_QuestionBank_Final_25MB_Part3.zip"
+          PART1="Bio_Alksher_StudentGate_Fixed_25MB_Part1.zip"
+          PART2="Bio_Alksher_StudentGate_Fixed_25MB_Part2.zip"
+          PART3="Bio_Alksher_StudentGate_Fixed_25MB_Part3.zip"
 
           LIMIT=$((25 * 1024 * 1024))
 
           for FILE in "$PART1" "$PART2" "$PART3"; do
             if [ ! -f "$FILE" ]; then
-              echo "ERROR: Missing archive: $FILE"
+              echo "ERROR: Missing latest project archive: $FILE"
               exit 1
             fi
 
             unzip -t "$FILE" >/dev/null
-
             SIZE=$(stat -f%z "$FILE")
 
             if [ "$SIZE" -gt "$LIMIT" ]; then
@@ -38,9 +37,9 @@ workflows:
             echo "Verified: $FILE ($SIZE bytes)"
           done
 
-          echo "All three archives passed verification."
+          echo "All latest project archives verified."
 
-      - name: Extract and merge the three project parts
+      - name: Remove old extracted project and merge latest parts
         script: |
           set -e
           cd "$CM_BUILD_DIR"
@@ -48,25 +47,25 @@ workflows:
           rm -rf source
           mkdir -p source
 
-          unzip -oq Bio_Alksher_QuestionBank_Final_25MB_Part1.zip -d source
-          unzip -oq Bio_Alksher_QuestionBank_Final_25MB_Part2.zip -d source
-          unzip -oq Bio_Alksher_QuestionBank_Final_25MB_Part3.zip -d source
+          unzip -oq Bio_Alksher_StudentGate_Fixed_25MB_Part1.zip -d source
+          unzip -oq Bio_Alksher_StudentGate_Fixed_25MB_Part2.zip -d source
+          unzip -oq Bio_Alksher_StudentGate_Fixed_25MB_Part3.zip -d source
 
           PROJECT_DIR="source"
 
           if [ ! -f "$PROJECT_DIR/settings.gradle" ] && [ ! -f "$PROJECT_DIR/settings.gradle.kts" ]; then
-            echo "ERROR: settings.gradle not found."
+            echo "ERROR: Gradle settings file not found."
             find source -maxdepth 4 -type f | head -100
             exit 1
           fi
 
           if [ ! -f "$PROJECT_DIR/app/build.gradle" ] && [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ]; then
-            echo "ERROR: app/build.gradle not found."
+            echo "ERROR: App Gradle file not found."
             exit 1
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$CM_ENV"
-          echo "Project extracted successfully."
+          echo "Latest StudentGate project extracted successfully."
 
       - name: Validate Android project and Firebase
         script: |
@@ -74,8 +73,6 @@ workflows:
           cd "$CM_BUILD_DIR/$PROJECT_DIR"
 
           for FILE in \
-            settings.gradle \
-            build.gradle \
             gradle.properties \
             app/src/main/AndroidManifest.xml \
             app/google-services.json \
@@ -89,6 +86,16 @@ workflows:
               exit 1
             fi
           done
+
+          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
+            echo "ERROR: settings.gradle is missing."
+            exit 1
+          fi
+
+          if [ ! -f build.gradle ] && [ ! -f build.gradle.kts ]; then
+            echo "ERROR: Root build.gradle is missing."
+            exit 1
+          fi
 
           APP_GRADLE="app/build.gradle"
           if [ ! -f "$APP_GRADLE" ]; then
@@ -110,7 +117,7 @@ workflows:
           project_id = data.get('project_info', {}).get('project_id')
 
           if project_id != 'biochemistry-easy-with':
-              raise SystemExit('Firebase project ID is incorrect: ' + str(project_id))
+              raise SystemExit('Incorrect Firebase project: ' + str(project_id))
 
           print('Firebase configuration verified:', project_id)
           PY
@@ -120,9 +127,9 @@ workflows:
             exit 1
           fi
 
-          echo "Project validation passed."
+          echo "Android and Firebase validation passed."
 
-      - name: Build Android APK
+      - name: Build latest Bio Alksher APK
         script: |
           set -e
           cd "$CM_BUILD_DIR/$PROJECT_DIR"
@@ -148,7 +155,7 @@ workflows:
           fi
 
           ls -lh "$APK"
-          echo "APK build completed successfully."
+          echo "Bio Alksher APK built successfully."
 
     artifacts:
       - source/app/build/outputs/apk/debug/*.apk
