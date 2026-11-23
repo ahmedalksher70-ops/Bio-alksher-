@@ -9,33 +9,38 @@ workflows:
       java: 17
 
     scripts:
-      - name: Verify the three uploaded project archives
+      - name: Verify the three new project archives
         script: |
           set -e
           cd "$CM_BUILD_DIR"
 
-          PART1="Bio_Alksher_Updated_Part1.zip"
-          PART2="Bio_Alksher_Updated_Part2.zip"
-          PART3="Bio_Alksher_Updated_Part3.zip"
+          PART1="Bio_Alksher_QuestionBank_Final_25MB_Part1.zip"
+          PART2="Bio_Alksher_QuestionBank_Final_25MB_Part2.zip"
+          PART3="Bio_Alksher_QuestionBank_Final_25MB_Part3.zip"
+
+          LIMIT=$((25 * 1024 * 1024))
 
           for FILE in "$PART1" "$PART2" "$PART3"; do
             if [ ! -f "$FILE" ]; then
-              echo "ERROR: Missing required archive: $FILE"
-              echo "Upload all three ZIP files to the Codemagic build directory."
+              echo "ERROR: Missing archive: $FILE"
               exit 1
             fi
 
             unzip -t "$FILE" >/dev/null
+
             SIZE=$(stat -f%z "$FILE")
-            LIMIT=$((25 * 1024 * 1024))
+
             if [ "$SIZE" -gt "$LIMIT" ]; then
-              echo "ERROR: $FILE is larger than 25 MiB."
+              echo "ERROR: $FILE exceeds 25 MB."
               exit 1
             fi
+
             echo "Verified: $FILE ($SIZE bytes)"
           done
 
-      - name: Merge Part 1, Part 2 and Part 3
+          echo "All three archives passed verification."
+
+      - name: Extract and merge the three project parts
         script: |
           set -e
           cd "$CM_BUILD_DIR"
@@ -43,35 +48,44 @@ workflows:
           rm -rf source
           mkdir -p source
 
-          unzip -oq Bio_Alksher_Updated_Part1.zip -d source
-          unzip -oq Bio_Alksher_Updated_Part2.zip -d source
-          unzip -oq Bio_Alksher_Updated_Part3.zip -d source
+          unzip -oq Bio_Alksher_QuestionBank_Final_25MB_Part1.zip -d source
+          unzip -oq Bio_Alksher_QuestionBank_Final_25MB_Part2.zip -d source
+          unzip -oq Bio_Alksher_QuestionBank_Final_25MB_Part3.zip -d source
 
           PROJECT_DIR="source"
 
           if [ ! -f "$PROJECT_DIR/settings.gradle" ] && [ ! -f "$PROJECT_DIR/settings.gradle.kts" ]; then
-            echo "ERROR: settings.gradle was not found directly inside source."
+            echo "ERROR: settings.gradle not found."
             find source -maxdepth 4 -type f | head -100
             exit 1
           fi
 
           if [ ! -f "$PROJECT_DIR/app/build.gradle" ] && [ ! -f "$PROJECT_DIR/app/build.gradle.kts" ]; then
-            echo "ERROR: app/build.gradle was not found."
-            find source -maxdepth 5 -type f | head -100
+            echo "ERROR: app/build.gradle not found."
             exit 1
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$CM_ENV"
-          echo "Project root confirmed: $PROJECT_DIR"
+          echo "Project extracted successfully."
 
-      - name: Validate Android project configuration
+      - name: Validate Android project and Firebase
         script: |
           set -e
           cd "$CM_BUILD_DIR/$PROJECT_DIR"
 
-          for FILE in settings.gradle build.gradle gradle.properties app/src/main/AndroidManifest.xml app/google-services.json; do
+          for FILE in \
+            settings.gradle \
+            build.gradle \
+            gradle.properties \
+            app/src/main/AndroidManifest.xml \
+            app/google-services.json \
+            app/src/main/java/com/biochem/easy/MainActivity.java \
+            app/src/main/java/com/biochem/easy/LecturePdfActivity.java \
+            app/src/main/java/com/biochem/easy/DeviceIdentity.java \
+            app/src/main/java/com/biochem/easy/AppsScriptApi.java; do
+
             if [ ! -f "$FILE" ]; then
-              echo "ERROR: Required project file is missing: $FILE"
+              echo "ERROR: Missing required file: $FILE"
               exit 1
             fi
           done
@@ -80,41 +94,35 @@ workflows:
           if [ ! -f "$APP_GRADLE" ]; then
             APP_GRADLE="app/build.gradle.kts"
           fi
-          test -f "$APP_GRADLE"
-
-          for FILE in \
-            app/src/main/java/com/biochem/easy/MainActivity.java \
-            app/src/main/java/com/biochem/easy/LecturePdfActivity.java \
-            app/src/main/java/com/biochem/easy/DeviceIdentity.java \
-            app/src/main/java/com/biochem/easy/AppsScriptApi.java; do
-            if [ ! -f "$FILE" ]; then
-              echo "ERROR: Required source file is missing: $FILE"
-              exit 1
-            fi
-          done
 
           grep -Eq 'minSdk[[:space:]]*=?[[:space:]]*24|minSdkVersion[[:space:]]+24' "$APP_GRADLE"
+
           grep -q 'FLAG_SECURE' app/src/main/java/com/biochem/easy/LecturePdfActivity.java
+
           grep -q 'biochemistry-easy-with' app/google-services.json
 
           python3 - <<'PY'
           import json
+
           with open('app/google-services.json', encoding='utf-8') as f:
               data = json.load(f)
+
           project_id = data.get('project_info', {}).get('project_id')
+
           if project_id != 'biochemistry-easy-with':
-              raise SystemExit(f'Unexpected Firebase project_id: {project_id}')
-          print('Firebase configuration JSON is valid:', project_id)
+              raise SystemExit('Firebase project ID is incorrect: ' + str(project_id))
+
+          print('Firebase configuration verified:', project_id)
           PY
 
           if grep -Rni 'half\.weight' app/src/main 2>/dev/null; then
-            echo "ERROR: Unexpected half.weight reference found in app sources."
+            echo "ERROR: Unexpected half.weight reference found."
             exit 1
           fi
 
-          echo "Android project validation passed."
+          echo "Project validation passed."
 
-      - name: Build debug APK
+      - name: Build Android APK
         script: |
           set -e
           cd "$CM_BUILD_DIR/$PROJECT_DIR"
@@ -132,8 +140,9 @@ workflows:
           cd "$CM_BUILD_DIR/$PROJECT_DIR"
 
           APK="app/build/outputs/apk/debug/app-debug.apk"
+
           if [ ! -s "$APK" ]; then
-            echo "ERROR: Debug APK was not generated at $APK"
+            echo "ERROR: APK was not generated."
             find app/build/outputs -type f 2>/dev/null || true
             exit 1
           fi
