@@ -1,7 +1,7 @@
 
 workflows:
   android-apk:
-    name: Bio Alksher Android APK - Exact Reference UI Final
+    name: Bio Alksher Android APK - Complete Merged Project Final
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -14,9 +14,9 @@ workflows:
           set -e
           cd "$CM_BUILD_DIR"
 
-          PART1="Bio_Alksher_Exact_Reference_UI_Final_Part1.zip"
-          PART2="Bio_Alksher_Exact_Reference_UI_Final_Part2.zip"
-          PART3="Bio_Alksher_Exact_Reference_UI_Final_Part3.zip"
+          PART1="Bio_Alksher_Complete_Project_Final_Part1.zip"
+          PART2="Bio_Alksher_Complete_Project_Final_Part2.zip"
+          PART3="Bio_Alksher_Complete_Project_Final_Part3.zip"
 
           LIMIT=$((25 * 1024 * 1024))
 
@@ -48,9 +48,9 @@ workflows:
           rm -rf source
           mkdir -p source
 
-          unzip -oq Bio_Alksher_Exact_Reference_UI_Final_Part1.zip -d source
-          unzip -oq Bio_Alksher_Exact_Reference_UI_Final_Part2.zip -d source
-          unzip -oq Bio_Alksher_Exact_Reference_UI_Final_Part3.zip -d source
+          unzip -oq Bio_Alksher_Complete_Project_Final_Part1.zip -d source
+          unzip -oq Bio_Alksher_Complete_Project_Final_Part2.zip -d source
+          unzip -oq Bio_Alksher_Complete_Project_Final_Part3.zip -d source
 
           PROJECT_DIR="source"
 
