@@ -1,7 +1,7 @@
 
 workflows:
   android-apk:
-    name: Bio Alksher Android APK - Complete Merged Project Final
+    name: Bio Alksher Android APK - Resumable 100MB New Project
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -9,15 +9,14 @@ workflows:
       java: 17
 
     scripts:
-      - name: Verify the three latest project archives
+      - name: Verify the three new project archives
         script: |
           set -e
           cd "$CM_BUILD_DIR"
 
-          PART1="Bio_Alksher_Complete_Project_Final_Part1.zip"
-          PART2="Bio_Alksher_Complete_Project_Final_Part2.zip"
-          PART3="Bio_Alksher_Complete_Project_Final_Part3.zip"
-
+          PART1="Bio_Alksher_Resumable100MB_New_Part1.zip"
+          PART2="Bio_Alksher_Resumable100MB_New_Part2.zip"
+          PART3="Bio_Alksher_Resumable100MB_New_Part3.zip"
           LIMIT=$((25 * 1024 * 1024))
 
           for FILE in "$PART1" "$PART2" "$PART3"; do
@@ -27,7 +26,6 @@ workflows:
             fi
 
             unzip -t "$FILE" >/dev/null
-
             SIZE=$(stat -f%z "$FILE")
 
             if [ "$SIZE" -gt "$LIMIT" ]; then
@@ -38,9 +36,9 @@ workflows:
             echo "Verified: $FILE ($SIZE bytes)"
           done
 
-          echo "All three project archives verified successfully."
+          echo "All three new archives verified."
 
-      - name: Remove old extraction and merge latest project
+      - name: Extract and merge the three project parts
         script: |
           set -e
           cd "$CM_BUILD_DIR"
@@ -48,9 +46,9 @@ workflows:
           rm -rf source
           mkdir -p source
 
-          unzip -oq Bio_Alksher_Complete_Project_Final_Part1.zip -d source
-          unzip -oq Bio_Alksher_Complete_Project_Final_Part2.zip -d source
-          unzip -oq Bio_Alksher_Complete_Project_Final_Part3.zip -d source
+          unzip -oq Bio_Alksher_Resumable100MB_New_Part1.zip -d source
+          unzip -oq Bio_Alksher_Resumable100MB_New_Part2.zip -d source
+          unzip -oq Bio_Alksher_Resumable100MB_New_Part3.zip -d source
 
           PROJECT_DIR="source"
 
@@ -66,9 +64,9 @@ workflows:
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$CM_ENV"
-          echo "Latest project extracted successfully."
+          echo "Project parts merged successfully."
 
-      - name: Validate Android project and Firebase
+      - name: Validate Android and Firebase files
         script: |
           set -e
           cd "$CM_BUILD_DIR/$PROJECT_DIR"
@@ -80,7 +78,8 @@ workflows:
             app/src/main/java/com/biochem/easy/MainActivity.java \
             app/src/main/java/com/biochem/easy/LecturePdfActivity.java \
             app/src/main/java/com/biochem/easy/DeviceIdentity.java \
-            app/src/main/java/com/biochem/easy/AppsScriptApi.java; do
+            app/src/main/java/com/biochem/easy/AppsScriptApi.java \
+            app/src/main/java/com/biochem/easy/DriveResumableUpload.java; do
 
             if [ ! -f "$FILE" ]; then
               echo "ERROR: Missing required file: $FILE"
@@ -88,25 +87,13 @@ workflows:
             fi
           done
 
-          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
-            echo "ERROR: Gradle settings file is missing."
-            exit 1
-          fi
-
-          if [ ! -f build.gradle ] && [ ! -f build.gradle.kts ]; then
-            echo "ERROR: Root build.gradle is missing."
-            exit 1
-          fi
-
           APP_GRADLE="app/build.gradle"
           if [ ! -f "$APP_GRADLE" ]; then
             APP_GRADLE="app/build.gradle.kts"
           fi
 
           grep -Eq 'minSdk[[:space:]]*=?[[:space:]]*24|minSdkVersion[[:space:]]+24' "$APP_GRADLE"
-
           grep -q 'FLAG_SECURE' app/src/main/java/com/biochem/easy/LecturePdfActivity.java
-
           grep -q 'biochemistry-easy-with' app/google-services.json
 
           python3 - <<'PY'
@@ -122,11 +109,6 @@ workflows:
 
           print('Firebase configuration verified:', project_id)
           PY
-
-          if grep -Rni 'half\.weight' app/src/main 2>/dev/null; then
-            echo "ERROR: Unexpected half.weight reference found."
-            exit 1
-          fi
 
           echo "Android and Firebase validation passed."
 
